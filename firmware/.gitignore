@@ -1,21 +1,28 @@
+# ===========================
 # PlatformIO
-.pio
-.vscode/.browse.c_cpp.db*
-.vscode/ipch
+# ===========================
+.pio/
+.pio/*
 
-# Python
+# ===========================
+# VSCode (config local del usuario)
+# ===========================
+.vscode/
+
+# ===========================
+# Python (por si usas scripts)
+# ===========================
 .venv/
-__pycahce__/
+__pycache__/
 *.pyc
 
-# VS Code
-.vscode/.history/
-.vscode/settings.json.user
-.vscode/tasks.json.user
-
-# SO
+# ===========================
+# SO (archivos basura del sistema)
+# ===========================
 .DS_Store
 Thumbs.db
 
+# ===========================
 # Logs
+# ===========================
 *.log
