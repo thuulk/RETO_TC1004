@@ -5,8 +5,8 @@
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include <PMserial.h>
-#include "include/wifi.h" // rename wifi_example.h or change the include
-#include "include/mqtt.h" // rename wifi_example.h or change the includ
+#include "wifi.h" // rename wifi_example.h or change the include
+#include "mqtt.h" // rename wifi_example.h or change the includ
 
 // SET-POINTS
 #define TEMP_MAX 35
@@ -17,6 +17,11 @@
 #define PRESS_MIN 25
 #define AIR_MAX 2
 #define AIR_MIN 1
+#define PM1_MAX 5.0f    // µg/m^3
+#define PM25_MAX 5.0f   // µg/m^3
+#define PM10_MAX 15.0f  // µg/m^3
+#define SMALL_COUNT_MAX 3000.0f  // p03 + p05 + p10
+#define LARGE_COUNT_MAX 500.0f   // p25 + p50 + p100
 
 // SENSORS PINS
 #define BME_SCL D1
@@ -179,8 +184,16 @@ void sendSensorData() {
 }
 
 // ------- ALARMS --------
-void alarms() {
-  if ()
+void alarms(const float& temp, const float& humid, const float& press) {
+  if (press < PRESS_MIN || press > PRESS_MAX) digitalWrite(YELLOW_LED, HIGH);
+  else digitalWrite(YELLOW_LED, LOW);
+
+  if (humid < HUMID_MIN || humid > HUMID_MAX) digitalWrite(RED_LED, HIGH);
+  else digitalWrite(RED_LED, LOW);
+
+  if (temp < TEMP_MIN || temp > TEMP_MAX) digitalWrite(BUZZER, HIGH);
+  else digitalWrite(BUZZER, LOW);
+
 }
 
 // -------- SETUP --------
@@ -196,6 +209,7 @@ void setup() {
     Serial.println("ERROR: No se encontró BME280.");
     while (1);
   }
+
   Wire.begin(BME_SDA, BME_SCL); // SDA, SCL
 
   // ---- PMS5003 setup vía PMserial ----
@@ -211,6 +225,15 @@ void loop() {
 
   sendSensorData();
   delay(3000);
+
+  // -- Agents bme--
+  float temp = bme.readTemperature();
+  float humid = bme.readHumidity();
+  float press = bme.readPressure();
+
+  // -- Alarms -- 
+  alarms(temp, humid, press);
+  
 
 }
 
