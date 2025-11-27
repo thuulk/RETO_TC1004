@@ -27,15 +27,15 @@ const char* ssid     = WIFI_SSID;
 const char* password = WIFI_PASSWORD;
 
 // -------- CONFIGURACIÓN MQTT --------
-const char* mqttServer = "172.20.10.2";
-const int mqttPort = 1883;
-const char* topic = "sensores/diego";
+const char* mqttServer = MQTT_SERVER;
+const int mqttPort = MQTT_PORT;
+const char* topic = TOPIC;
 WiFiClient espClient;
 PubSubClient client(espClient);
 
 // ===== bme setup =====
-  Adafruit_BME280 bme280;
-  BMEReader bme(bme280);
+Adafruit_BME280 bme280;
+BMEReader bme(bme280);
 
 // ===== Initiliazing PMS5003 (PMserial) =====
 // Constructor recomendado por la librería:
