@@ -15,8 +15,6 @@
 #define HUMID_MIN 12
 #define PRESS_MAX 40
 #define PRESS_MIN 25
-#define AIR_MAX 2
-#define AIR_MIN 1
 #define PM1_MAX 5.0f    // µg/m^3
 #define PM25_MAX 5.0f   // µg/m^3
 #define PM10_MAX 15.0f  // µg/m^3
@@ -24,8 +22,8 @@
 #define LARGE_COUNT_MAX 500.0f   // p25 + p50 + p100
 
 // SENSORS PINS
-#define BME_SCL D1
-#define BME_SDA D2
+#define BME_SCL D1    // Purple jumper
+#define BME_SDA D2    // Blue jumper
 #define PMS_RX D3
 #define PMS_TX D4
 
@@ -53,21 +51,7 @@ Adafruit_BME280 bme;
 // -------- Initiliazing PMS5003 (PMserial) --------
 // Constructor recomendado por la librería:
 // SerialPM pms(PMSx003, RX, TX);
-SerialPM pms(PMSx003, D2, D3);
-
-// -------- VARIABLES GLOBALES --------
-// (mantengo tus tipos uint16_t, solo cambia el origen de los datos)
-uint16_t pm1   = (uint16_t)-1;
-uint16_t pm25  = (uint16_t)-1;
-uint16_t pm10  = (uint16_t)-1;
-
-uint16_t p03   = (uint16_t)-1;
-uint16_t p05   = (uint16_t)-1;
-uint16_t p10   = (uint16_t)-1;  // partículas >= 1.0 µm
-uint16_t p25   = (uint16_t)-1;
-uint16_t p50   = (uint16_t)-1;
-uint16_t p100  = (uint16_t)-1;
-
+SerialPM pms(PMSx003, PMS_RX, PMS_TX);
 
 // -------- CONECTAR WIFI --------
 void setup_wifi() {
@@ -104,30 +88,19 @@ void reconnect() {
 }
 
 // -------- LEER PMS5003 (usando PMserial) --------
-bool leerPMS() {
+bool readPMS() {
   // Dispara la lectura y decodifica el último frame del sensor
   pms.read();
 
   // Si no hay medición válida de PM/NC, regresamos false
   if (!pms.has_particulate_matter() || !pms.has_number_concentration()) {
     // Si quieres debug más fino:
-    // Serial.print("PMS error status: ");
-    // Serial.println(pms.status);
+    Serial.print("PMS error status: ");
+    Serial.println(pms.status);
     return false;
   }
 
-  // PM en µg/m³
-  pm1  = pms.pm01;   // PM <= 1.0 µm
-  pm25 = pms.pm25;   // PM <= 2.5 µm
-  pm10 = pms.pm10;   // PM <= 10  µm
 
-  // Conteo de partículas (#/100 cm³), mapeado a tus variables
-  p03  = pms.n0p3;   // >= 0.3 µm
-  p05  = pms.n0p5;   // >= 0.5 µm
-  p10  = pms.n1p0;   // >= 1.0 µm
-  p25  = pms.n2p5;   // >= 2.5 µm
-  p50  = pms.n5p0;   // >= 5.0 µm
-  p100 = pms.n10p0;  // >= 10  µm
 
   Serial.println("----- Datos PMS5003 (PMserial) -----");
   Serial.printf("PM1: %u  PM2.5: %u  PM10: %u\n", pm1, pm25, pm10);
@@ -140,7 +113,7 @@ bool leerPMS() {
 }
 
 // -------- ENVIAR JSON --------
-void sendSensorData() {
+void sendSensorData(PMserial& pms) {
   float temp = bme.readTemperature();
   float hum  = bme.readHumidity();
   float pres = bme.readPressure() / 100.0F;
@@ -151,7 +124,7 @@ void sendSensorData() {
   }
 
   // Actualiza valores del PMS (si falla, deja los últimos)
-  leerPMS();
+  readPMS();
 
   StaticJsonDocument<350> doc;
 
@@ -201,8 +174,8 @@ void setup() {
   Serial.begin(115200); // inicializando baud rate
 
   // ---- wifi setup ----
-  setup_wifi();
-  client.setServer(mqttServer, mqttPort);
+  //setup_wifi();
+  //client.setServer(mqttServer, mqttPort);
 
   /// ---- bme setup ----
   if (!bme.begin(0x76)) { // caso: direccion de memoria del bme no encontrada
@@ -220,20 +193,25 @@ void setup() {
 
 // -------- LOOP --------
 void loop() {
-  if (!client.connected()) reconnect();
-  client.loop();
+  //if (!client.connected()) reconnect();
+  //client.loop();
 
-  sendSensorData();
+  //sendSensorData();
   delay(3000);
 
-  // -- Agents bme--
+  // ------ sensors readings -------
   float temp = bme.readTemperature();
   float humid = bme.readHumidity();
-  float press = bme.readPressure();
+  float press = bme.readPressure() / 100.0f;
+  bool isReadingPMS = readPMS();
 
   // -- Alarms -- 
   alarms(temp, humid, press);
   
+  // serial monitor 
+  Serial.print("🌡Temp: " + String(temp) +  " °C | ");
+  Serial.print("💧 Hum: " + String(humid) + " % | "); 
+  Serial.print("🌬 Presión: " + String(press) + "hPa\n");
 
 }
 
