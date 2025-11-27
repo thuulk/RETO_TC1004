@@ -2,6 +2,8 @@
 #define INCLUDE_AIRQUALITYANALYZER_H
 #include <stdint.h>
 #include<PMserial.h>
+#define PMS_RX D3
+#define PMS_TX D4
 
 // =====================
 //   AIR QUALITY THRESHOLDS
@@ -98,7 +100,7 @@ class PMSreader {
                             static_cast<float>(data.p50) +
                             static_cast<float>(data.p100);
 
-        bool isCountSafe = smallCount <= SMALLCOUNT_MAX_SAFE && LARGECOUNT_MAX_SAFE;
+        bool isCountSafe = smallCount <= SMALLCOUNT_MAX_SAFE && largeCount <=LARGECOUNT_MAX_SAFE;
 
         // ===== Danger mass concentration check =====
         bool pmDanger = data.pm10 > PM10_MAX_SAFE * AQI_WARNING_FACTOR ||
