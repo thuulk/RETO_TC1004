@@ -34,7 +34,13 @@ class BMEReader {
     BMEData data;
 
     public:
-    BMEReader(Adafruit_BME280& bme280) : bme(bme280) {}
+    BMEReader(Adafruit_BME280& bme280) : bme(bme280) {
+        if (!bme.begin(0x76)) { // caso: direccion de memoria del bme no encontrada
+            Serial.println("ERROR: No se encontró BME280.");
+            while (1);
+        }
+        Wire.begin(BME_SDA, BME_SCL); // SDA, SCL
+    }
 
     [[nodiscard]] bool updateData() noexcept {
         float temp = bme.readTemperature();

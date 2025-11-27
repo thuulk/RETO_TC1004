@@ -33,11 +33,11 @@ const char* topic = "sensores/diego";
 WiFiClient espClient;
 PubSubClient client(espClient);
 
-// -------- Initializing BME280 I2C ------------
-Adafruit_BME280 bme280;
-BMEReader bme(bme280);
+// ===== bme setup =====
+  Adafruit_BME280 bme280;
+  BMEReader bme(bme280);
 
-// -------- Initiliazing PMS5003 (PMserial) --------
+// ===== Initiliazing PMS5003 (PMserial) =====
 // Constructor recomendado por la librería:
 // SerialPM pms(PMSx003, RX, TX);
 SerialPM serialpm(PMSx003, PMS_RX, PMS_TX);
@@ -133,25 +133,13 @@ void alarms(const float& temp, const float& humid, const float& press) {
 
 }
 
-// -------- SETUP --------
+// ===== SETUP =====
 void setup() {
   Serial.begin(115200); // inicializando baud rate
 
   // ===== wifi setup =====
   //setup_wifi();
   //client.setServer(mqttServer, mqttPort);
-
-  /// ===== bme setup =====
-  if (!bme280.begin(0x76)) { // caso: direccion de memoria del bme no encontrada
-    Serial.println("ERROR: No se encontró BME280.");
-    while (1);
-  }
-
-  Wire.begin(BME_SDA, BME_SCL); // SDA, SCL
-
-  // ===== PMS5003 setup by PMserial =====
-  serialpm.init();   // configure interanl serial port to 9600
-  Serial.println("Sensores inicializados correctamente.");
 
 }
 

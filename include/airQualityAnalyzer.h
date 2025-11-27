@@ -55,7 +55,10 @@ class PMSReader {
     PMSData data;
 
     public: 
-    PMSReader(SerialPM& pms5003) : pms(pms5003) {}
+    PMSReader(SerialPM& pms5003) : pms(pms5003) {
+        serialpm.init();   // configure interanl serial port to 9600
+        Serial.println("Sensores inicializados correctamente.");
+    }
 
 
     [[nodiscard]] bool updateData() noexcept {
