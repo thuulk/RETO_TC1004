@@ -15,10 +15,6 @@
 #define PRESS_MAX 40
 #define PRESS_MIN 25
 
-// SENSORS PINS
-#define BME_SCL D1    // Purple jumper
-#define BME_SDA D2    // Blue jumper
-
 // ALARMS (OUTPUT-PINS)
 #define GREEN_LED D5
 #define YELLOW_LED D6
@@ -38,13 +34,14 @@ WiFiClient espClient;
 PubSubClient client(espClient);
 
 // -------- Initializing BME280 I2C ------------
-Adafruit_BME280 bme;
+Adafruit_BME280 bme280;
+BMEReader bme(bme280);
 
 // -------- Initiliazing PMS5003 (PMserial) --------
 // Constructor recomendado por la librería:
 // SerialPM pms(PMSx003, RX, TX);
 SerialPM serialpm(PMSx003, PMS_RX, PMS_TX);
-PMSreader pms(serialpm);
+PMSReader pms(serialpm);
 
 // -------- CONECTAR WIFI --------
 void setup_wifi() {
@@ -80,38 +77,37 @@ void reconnect() {
   }
 }
 
-// -------- ENVIAR JSON --------
-void sendSensorData(PMSreader& aqReader) {
-  float temp = bme.readTemperature();
-  float hum  = bme.readHumidity();
-  float pres = bme.readPressure() / 100.0F;
+// ===== SEND JSON =====
+void sendSensorData(PMSReader& aqReader, BMEReader& atReader) {
+  
+  // ===== Sensor readings plus reading integrity check =====
+  if (!aqReader.updateData()) Serial.println("failed reading at PMS5003");
+  if (!atReader.updateData()) Serial.println("failed reading at BME280");
 
-  if (isnan(temp) || isnan(hum) || isnan(pres)) Serial.println("Error leyendo BME280.");
-  if (!aqReader.updateData()) Serial.println("Error leyendo PMS5003");
+  // ===== referencing the read data =====
+  const PMSData& pmsData = aqReader.getData();
+  const BMEData& bmeData = atReader.getData();
 
-  const PMSdata& data = aqReader.getData();
-
-  // Actualiza valores del PMS (si falla, deja los últimos)
-
+  // ===== defining JSON document for packaging the data =====
   StaticJsonDocument<350> doc;
   
+  // ===== Parsing the data to a JSON file =====
+  doc["temperatura"] = bmeData.temp;
+  doc["humedad"]     = bmeData.humid;
+  doc["presion"]     = bmeData.press;
 
-  doc["temperatura"] = temp;
-  doc["humedad"]     = hum;
-  doc["presion"]     = pres;
+  //  ===== standard PM =====
+  doc["pm1"]  = pmsData.pm1;
+  doc["pm25"] = pmsData.pm25;
+  doc["pm10"] = pmsData.pm10;
 
-  // PM estándar
-  doc["pm1"]  = data.pm1;
-  doc["pm25"] = data.pm25;
-  doc["pm10"] = data.pm10;
-
-  // Partículas por tamaño
-  doc["p03"]  = data.p03;
-  doc["p05"]  = data.p05;
-  doc["p10"]  = data.p10;   // 1 µm
-  doc["p25"]  = data.p25;
-  doc["p50"]  = data.p50;
-  doc["p100"] = data.p100;
+  // ===== standard P =====
+  doc["p03"]  = pmsData.p03;
+  doc["p05"]  = pmsData.p05;
+  doc["p10"]  = pmsData.p10;   // 1 µm
+  doc["p25"]  = pmsData.p25;
+  doc["p50"]  = pmsData.p50;
+  doc["p100"] = pmsData.p100;
 
   char buffer[400];
   serializeJson(doc, buffer);
@@ -141,44 +137,38 @@ void alarms(const float& temp, const float& humid, const float& press) {
 void setup() {
   Serial.begin(115200); // inicializando baud rate
 
-  // ---- wifi setup ----
+  // ===== wifi setup =====
   //setup_wifi();
   //client.setServer(mqttServer, mqttPort);
 
-  /// ---- bme setup ----
-  if (!bme.begin(0x76)) { // caso: direccion de memoria del bme no encontrada
+  /// ===== bme setup =====
+  if (!bme280.begin(0x76)) { // caso: direccion de memoria del bme no encontrada
     Serial.println("ERROR: No se encontró BME280.");
     while (1);
   }
 
   Wire.begin(BME_SDA, BME_SCL); // SDA, SCL
 
-  // ---- PMS5003 setup vía PMserial ----
-  serialpm.init();   // configura el puerto serie interno a 9600
+  // ===== PMS5003 setup by PMserial =====
+  serialpm.init();   // configure interanl serial port to 9600
   Serial.println("Sensores inicializados correctamente.");
 
 }
 
-// -------- LOOP --------
+// ===== LOOP =====
 void loop() {
   //if (!client.connected()) reconnect();
   //client.loop();
 
-  //sendSensorData();
+  sendSensorData(pms, bme);
   delay(3000);
 
-  // ------ sensors readings -------
-  float temp = bme.readTemperature();
-  float humid = bme.readHumidity();
-  float press = bme.readPressure() / 100.0f;
-
-  // -- Alarms -- 
-  alarms(temp, humid, press);
+  // ===== Alarms =====
+  
   
   // serial monitor 
-  Serial.print("🌡Temp: " + String(temp) +  " °C | ");
-  Serial.print("💧 Hum: " + String(humid) + " % | "); 
-  Serial.print("🌬 Presión: " + String(press) + "hPa\n");
+  Serial.println(pms.toString());
+  Serial.println(bme.toString());
 
 }
 

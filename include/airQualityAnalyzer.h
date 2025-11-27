@@ -23,7 +23,7 @@ constexpr float LARGECOUNT_MAX_SAFE = 500.0f;  // p25 + p50 + p100
 constexpr float AQI_WARNING_FACTOR  = 3.0f; // 3x above "good" threshold
 
 // ===== DATA STRUCTURE ======
-struct PMSdata {
+struct PMSData {
 
     // ==== READING STATUS ====
     bool isValidRead = false;
@@ -49,19 +49,20 @@ enum class AirQuality {
     DANGER,
 };
 
-class PMSreader {
+class PMSReader {
     private:
     SerialPM& pms;
-    PMSdata data;
+    PMSData data;
 
     public: 
-    PMSreader(SerialPM& pms5003) : pms(pms5003) {}
+    PMSReader(SerialPM& pms5003) : pms(pms5003) {}
 
 
     [[nodiscard]] bool updateData() noexcept {
 
         pms.read();
 
+        // ===== Invalid lecture =====
         if (!pms.has_particulate_matter() || !pms.has_number_concentration()) {
             data.isValidRead = false;
             return false;
@@ -77,8 +78,9 @@ class PMSreader {
         data.p25  = pms.n2p5;
         data.p50  = pms.n5p0;
         data.p100 = pms.n10p0;
+
+        // ===== Valid lecture =====
         data.isValidRead = true;
-        
         return true;
     }
 
@@ -133,14 +135,14 @@ class PMSreader {
 
     String toString() const {
         String s = "PM1: " + String(data.pm1); 
-        s += " PM2.5:"     + String(data.pm25);
-        s += " PM10: "     + String(data.pm10);
+        s += ", PM2.5:"     + String(data.pm25);
+        s += ", PM10: "     + String(data.pm10);
         s += "| AQI: "     + qualityLabel();
 
         return s;
     }
 
-    const PMSdata& getData() const { return data; }
+    const PMSData& getData() const { return data; }
 
 };
 #endif
