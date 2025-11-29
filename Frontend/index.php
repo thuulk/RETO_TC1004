@@ -14,42 +14,104 @@ if (!isset($_SESSION["username"])) {
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+  <!-- ====== MODALES MEJORADOS ====== -->
   <style>
+
+    /* --- Fondo borroso + animación --- */
     .alert-box {
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(8px);
+      background: rgba(0,0,0,0.45);
       justify-content: center;
       align-items: center;
       z-index: 9999;
+      animation: fadeIn 0.25s ease-out;
     }
 
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    /* --- Contenido del modal, más grande y bonito --- */
     .alert-content {
-      background: white;
-      padding: 20px;
-      border-radius: 12px;
-      max-width: 300px;
-      width: 100%;
+      background: #ffffffee;
+      padding: 35px;
+      border-radius: 22px;
+      width: 420px;
+      max-width: 90%;
       text-align: center;
       color: #000;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+      animation: pop 0.3s ease-out;
     }
 
-    .alert-content h3,
-    .alert-content p,
+    @keyframes pop {
+      from { transform: scale(0.75); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+
+    .alert-content h3 {
+      font-size: 2rem;
+      margin-bottom: 10px;
+      color: #023047;
+    }
+
+    .alert-content input,
     .alert-content label {
       color: #000;
     }
 
-    input {
-      color: #000;
+    .alert-content input {
+      width: 92%;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid #b7b7b7;
+      margin-bottom: 15px;
+      font-size: 1.6rem;
     }
 
+    /* Botones bonitos */
+    .modal-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .modal-buttons button {
+      padding: 12px;
+      border-radius: 12px;
+      border: none;
+      font-size: 1.6rem;
+      cursor: pointer;
+      transition: 0.2s;
+      background: var(--azul);
+      color: white;
+    }
+
+    .modal-buttons button:hover {
+      background: #147a94;
+      transform: scale(1.03);
+    }
+
+    .modal-buttons button.cancel {
+      background: #888888;
+    }
+
+    .modal-buttons button.cancel:hover {
+      background: #6e6e6e;
+    }
+
+    /* Alarma */
     .alarm {
       background-color: #ffb4b4 !important;
       box-shadow: 0 0 20px rgba(255, 0, 0, 0.6);
     }
   </style>
+
 </head>
 
 <body class="dashboard-page">
@@ -63,13 +125,23 @@ if (!isset($_SESSION["username"])) {
     <p class="activo">Inicio</p>
     <p>Historial</p>
   </div>
-  <a href="logout.php"><button class="logout-btn">Cerrar sesión</button></a>
+
+  <div class="nav-right">
+      <button class="nav-btn" onclick="abrirRegistro()">
+          Registrar empleado
+      </button>
+
+      <a href="logout.php">
+        <button class="logout-btn">Cerrar sesión</button>
+      </a>
+  </div>
 </nav>
+
 
 <div class="container">
   <section class="dashboard">
     <h2>Bienvenido al Sistema de Monitoreo</h2>
-    <p>Monitoreo en tiempo real de las condiciones ambientales</p>
+    <p class="subtitulo">Monitoreo en tiempo real de las condiciones ambientales</p>
 
     <div class="gauges-container">
 
@@ -101,7 +173,9 @@ if (!isset($_SESSION["username"])) {
   </section>
 </div>
 
-<!-- MODAL SETPOINT -->
+<!-- ================== MODALES ================== -->
+
+<!-- SETPOINT -->
 <div id="setpointBox" class="alert-box">
   <div class="alert-content">
     <h3>⚙ Configurar setpoint</h3>
@@ -113,13 +187,15 @@ if (!isset($_SESSION["username"])) {
     <label>Máximo:</label>
     <input type="number" id="setpointMax">
 
-    <br><br>
-    <button onclick="guardarSetpoint()">Guardar</button>
-    <button onclick="cerrarSetpoint()" style="background:#888;">Cancelar</button>
+    <div class="modal-buttons">
+      <button onclick="guardarSetpoint()">Guardar</button>
+      <button class="cancel" onclick="cerrarSetpoint()">Cancelar</button>
+    </div>
+
   </div>
 </div>
 
-<!-- MODAL ALERTA -->
+<!-- ALERTA -->
 <div id="alertBox" class="alert-box">
   <div class="alert-content">
     <h3>⚠ ALARMA ACTIVADA</h3>
@@ -128,11 +204,35 @@ if (!isset($_SESSION["username"])) {
     <label>Código para desactivar:</label>
     <input type="password" id="alertCode">
 
-    <br><br>
-    <button onclick="validarCodigo()">Desactivar</button>
+    <div class="modal-buttons">
+      <button onclick="validarCodigo()">Desactivar</button>
+    </div>
+
   </div>
 </div>
 
+<!-- REGISTRO -->
+<div id="registroBox" class="alert-box">
+  <div class="alert-content">
+    <h3>Registrar empleado</h3>
+
+    <form action="record.php" method="POST">
+        <label>Matrícula:</label>
+        <input type="text" name="matricula" required>
+
+        <label>Contraseña:</label>
+        <input type="password" name="password" required>
+
+        <div class="modal-buttons">
+          <button type="submit">Registrar</button>
+          <button type="button" class="cancel" onclick="cerrarRegistro()">Cancelar</button>
+        </div>
+    </form>
+
+  </div>
+</div>
+
+<!-- ================= JS ================== -->
 <script>
 let gauges = {};
 let setpointActual = null;
@@ -210,7 +310,7 @@ function createOrUpdateGauge(id, value, max) {
   gauges[id].currentValue = value;
 }
 
-// ========= CONFIGURAR SETPOINT ===========
+// ========= SETPOINT ===========
 function setSetpoint(type) {
   setpointActual = type;
 
@@ -305,6 +405,16 @@ function simularDatos() {
 }
 
 setInterval(simularDatos, 2000);
+
+// ======== REGISTRO EMPLEADO ==========
+function abrirRegistro() {
+    document.getElementById("registroBox").style.display = "flex";
+}
+
+function cerrarRegistro() {
+    document.getElementById("registroBox").style.display = "none";
+}
+
 </script>
 
 </body>
