@@ -1,5 +1,5 @@
 #ifndef INCLUDE_BMEANALYZER_H
-#define INCLUDE_BMEANALyZER_H
+#define INCLUDE_BMEANALYZER_H
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
 
@@ -35,11 +35,6 @@ class BMEReader {
 
     public:
     BMEReader(Adafruit_BME280& bme280) : bme(bme280) {
-        if (!bme.begin(0x76)) { // caso: direccion de memoria del bme no encontrada
-            Serial.println("ERROR: No se encontró BME280.");
-            while (1);
-        }
-        Wire.begin(BME_SDA, BME_SCL); // SDA, SCL
     }
 
     [[nodiscard]] bool updateData() noexcept {
@@ -69,9 +64,11 @@ class BMEReader {
         String s = "Temperature: " + String(data.temp) + " °C, ";
         s += "Humidity: " + String(data.humid) + " %, ";
         s += "Pressure: " + String(data.press) + " hPa";
+        return s;
     }
 
     const BMEData& getData() const {return data;}
+    const bool& getStatus() const {return data.isValidRead; }
 };
 
 

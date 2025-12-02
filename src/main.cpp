@@ -1,11 +1,12 @@
 #include <Wire.h>
 #include <ESP8266WiFi.h>
-#include <PubSubClient.h>
 #include <ArduinoJson.h>
-#include "wifi.h" // rename wifi_example.h or change the include
-#include "mqtt.h" // rename wifi_example.h or change the includ3
+#include "wifiPublish.h"
 #include "airQualityAnalyzer.h"
 #include "bmeAnalyzer.h"
+#include "airQualityAnalyzer.h"
+#include "alarm.h"
+#include "css811Reader.h"
 
 // SET-POINTS
 #define TEMP_MAX 35
@@ -16,22 +17,7 @@
 #define PRESS_MIN 25
 
 // ALARMS (OUTPUT-PINS)
-#define GREEN_LED D5
-#define YELLOW_LED D6
-#define RED_LED D7
-#define BUZZER D8
 
-
-// -------- CONFIGURACIÓN WIFI --------
-const char* ssid     = WIFI_SSID;
-const char* password = WIFI_PASSWORD;
-
-// -------- CONFIGURACIÓN MQTT --------
-const char* mqttServer = MQTT_SERVER;
-const int mqttPort = MQTT_PORT;
-const char* topic = TOPIC;
-WiFiClient espClient;
-PubSubClient client(espClient);
 
 // ===== bme setup =====
 Adafruit_BME280 bme280;
@@ -43,120 +29,75 @@ BMEReader bme(bme280);
 SerialPM serialpm(PMSx003, PMS_RX, PMS_TX);
 PMSReader pms(serialpm);
 
+// ===== css setup =====
+Adafruit_CCS811 css811;
+CSSReader css(css811);
+
 // -------- CONECTAR WIFI --------
-void setup_wifi() {
-  Serial.println();
-  Serial.print("Conectando a ");
-  Serial.println(ssid);
 
-  WiFi.begin(ssid, password);
-
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-
-  Serial.println("\nWiFi conectado!");
-  Serial.print("IP asignada: ");
-  Serial.println(WiFi.localIP());
-}
 
 // -------- RECONNECT MQTT --------
-void reconnect() {
-  while (!client.connected()) {
-    Serial.print("Intentando conectar al broker MQTT...");
 
-    if (client.connect("ESP8266_SENSORES")) {
-      Serial.println("Conectado!");
-    } else {
-      Serial.print("Fallo, rc=");
-      Serial.print(client.state());
-      Serial.println(" — Reintentando...");
-      delay(2000);
-    }
-  }
-}
 
-// ===== SEND JSON =====
-void sendSensorData(PMSReader& aqReader, BMEReader& atReader) {
-  
-  // ===== Sensor readings plus reading integrity check =====
-  if (!aqReader.updateData()) Serial.println("failed reading at PMS5003");
-  if (!atReader.updateData()) Serial.println("failed reading at BME280");
 
-  // ===== referencing the read data =====
-  const PMSData& pmsData = aqReader.getData();
-  const BMEData& bmeData = atReader.getData();
-
-  // ===== defining JSON document for packaging the data =====
-  StaticJsonDocument<350> doc;
-  
-  // ===== Parsing the data to a JSON file =====
-  doc["temperatura"] = bmeData.temp;
-  doc["humedad"]     = bmeData.humid;
-  doc["presion"]     = bmeData.press;
-
-  //  ===== standard PM =====
-  doc["pm1"]  = pmsData.pm1;
-  doc["pm25"] = pmsData.pm25;
-  doc["pm10"] = pmsData.pm10;
-
-  // ===== standard P =====
-  doc["p03"]  = pmsData.p03;
-  doc["p05"]  = pmsData.p05;
-  doc["p10"]  = pmsData.p10;   // 1 µm
-  doc["p25"]  = pmsData.p25;
-  doc["p50"]  = pmsData.p50;
-  doc["p100"] = pmsData.p100;
-
-  char buffer[400];
-  serializeJson(doc, buffer);
-
-  if (client.publish(topic, buffer)) {
-    Serial.println("JSON enviado:");
-    Serial.println(buffer);
-  } else {
-    Serial.println("Error enviando JSON.");
-  }
-}
 
 // ------- ALARMS --------
-void alarms(const float& temp, const float& humid, const float& press) {
-  if (press < PRESS_MIN || press > PRESS_MAX) digitalWrite(YELLOW_LED, HIGH);
-  else digitalWrite(YELLOW_LED, LOW);
 
-  if (humid < HUMID_MIN || humid > HUMID_MAX) digitalWrite(RED_LED, HIGH);
-  else digitalWrite(RED_LED, LOW);
-
-  if (temp < TEMP_MIN || temp > TEMP_MAX) digitalWrite(BUZZER, HIGH);
-  else digitalWrite(BUZZER, LOW);
-
-}
 
 // ===== SETUP =====
 void setup() {
   Serial.begin(115200); // inicializando baud rate
 
+  // ===== pms ======
+  serialpm.init();   // configure interanl serial port to 9600
+
+  // ===== bme ======
+  if (!bme280.begin(0x76)) { // caso: direccion de memoria del bme no encontrada
+    Serial.println("ERROR: No se encontró BME280.");
+    while (1);
+  }
+  Wire.begin(BME_SDA, BME_SCL); // SDA, SCL
+  Serial.println("Sensores inicializados correctamente.");
+
+  // ===== ccs =====
+  if (!ccs.begin()) {
+    Serial.println("No se pudo iniciar el sensor CCS811. Verifica cableado!");
+    while (1);
+  }
+
+  // Configurar modo de medición (1 lectura/seg)
+  ccs.setDriveMode(CCS811_DRIVE_MODE_1SEC);
+
+  // Esperar a que se estabilice (warm-up)
+  Serial.println("Esperando a que el sensor esté listo...");
+  while (!ccs.available()) delay(100);
+  Serial.println("CCS811 listo!");
+  
+  
   // ===== wifi setup =====
-  //setup_wifi();
-  //client.setServer(mqttServer, mqttPort);
+  setup_wifi();
+  client.setServer(mqttServer, mqttPort);
 
 }
 
 // ===== LOOP =====
 void loop() {
-  //if (!client.connected()) reconnect();
-  //client.loop();
+  if (!client.connected()) reconnect();
+  client.loop();
 
-  sendSensorData(pms, bme);
+  sendSensorData(pms, bme, ccs);
   delay(3000);
+  
+  
 
   // ===== Alarms =====
   
   
   // serial monitor 
-  Serial.println(pms.toString());
   Serial.println(bme.toString());
+  Serial.println(pms.toString());
+  Serial.println(ccs.toString());
+
 
 }
 

@@ -1,13 +1,20 @@
 #ifndef INCLUDE_AIRQUALITYANALYZER_H
 #define INCLUDE_AIRQUALITYANALYZER_H
+
+#include <Arduino.h>      // Para Serial, String
 #include <stdint.h>
-#include<PMserial.h>
-#define PMS_RX D3
-#define PMS_TX D4
+#include <PMserial.h>
+
+// =====================
+//   PINES PMS5003
+// =====================
+// Convención: PMS_RX = pin donde el ESP *RECIBE* (va al TXD del sensor)
+//             PMS_TX = pin donde el ESP *ENVÍA*  (va al RXD del sensor)
+#define PMS_RX D5   // conectado a TXD del PMS
+#define PMS_TX D6   // conectado a RXD del PMS
 
 // =====================
 //   AIR QUALITY THRESHOLDS
-//   (adjust depending on requirements)
 // =====================
 
 // "Good" thresholds for cold storage environments (µg/m³)
@@ -29,17 +36,17 @@ struct PMSData {
     bool isValidRead = false;
 
     // ==== PM en µg/m³ ====
-    uint16_t pm1;   // PM <= 1.0 µm
-    uint16_t pm25;  // PM <= 2.5 µm
-    uint16_t pm10;  // PM <= 10  µm
+    uint16_t pm1  = 0;  // PM <= 1.0 µm
+    uint16_t pm25 = 0;  // PM <= 2.5 µm
+    uint16_t pm10 = 0;  // PM <= 10  µm
 
     // ==== PARTICLE READINGS (#/100cm³) ====
-    uint16_t p03;   // >= 0.3 µm
-    uint16_t p05;   // >= 0.5 µm
-    uint16_t p10;   // >= 1.0 µm
-    uint16_t p25;   // >= 2.5 µm
-    uint16_t p50;   // >= 5.0 µm
-    uint16_t p100;  // >= 10  µm
+    uint16_t p03  = 0;  // >= 0.3 µm
+    uint16_t p05  = 0;  // >= 0.5 µm
+    uint16_t p10  = 0;  // >= 1.0 µm
+    uint16_t p25  = 0;  // >= 2.5 µm
+    uint16_t p50  = 0;  // >= 5.0 µm
+    uint16_t p100 = 0;  // >= 10  µm
 };
 
 enum class AirQuality {
@@ -50,102 +57,106 @@ enum class AirQuality {
 };
 
 class PMSReader {
-    private:
+private:
     SerialPM& pms;
-    PMSData data;
+    PMSData   data;
 
-    public: 
-    PMSReader(SerialPM& pms5003) : pms(pms5003) {
-        serialpm.init();   // configure interanl serial port to 9600
-        Serial.println("Sensores inicializados correctamente.");
-    }
-
+public:
+    PMSReader(SerialPM& pms5003) : pms(pms5003) {}
 
     [[nodiscard]] bool updateData() noexcept {
 
+        // Lee del sensor
         pms.read();
 
-        // ===== Invalid lecture =====
-        if (!pms.has_particulate_matter() || !pms.has_number_concentration()) {
+        // Debug bruto de la librería
+        if (pms) {
+            Serial.println(F("[PMS] VALID FRAME RECEIVED"));
+            Serial.print(F("  PM1: "));  Serial.println(pms.pm01);
+            Serial.print(F("  PM2.5: "));Serial.println(pms.pm25);
+            Serial.print(F("  PM10: ")); Serial.println(pms.pm10);
+        } else {
+            Serial.print(F("[PMS] INVALID FRAME, status = "));
+            Serial.println(pms.status);  // 1 = timeout, 2 = checksum, 3 = header...
+        }
+
+        // Si no hay datos de masa, no hay nada que hacer
+        if (!pms.has_particulate_matter()) {
             data.isValidRead = false;
             return false;
         }
 
-        // ==== READING DATA ====
+        // ==== MASS CONCENTRATION (µg/m³) ====
         data.pm1  = pms.pm01;
         data.pm25 = pms.pm25; 
         data.pm10 = pms.pm10;
-        data.p03  = pms.n0p3;
-        data.p05  = pms.n0p5;
-        data.p10  = pms.n1p0;
-        data.p25  = pms.n2p5;
-        data.p50  = pms.n5p0;
-        data.p100 = pms.n10p0;
 
-        // ===== Valid lecture =====
+        // ==== NUMBER CONCENTRATION (solo si está disponible) ====
+        if (pms.has_number_concentration()) {
+            data.p03  = pms.n0p3;
+            data.p05  = pms.n0p5;
+            data.p10  = pms.n1p0;
+            data.p25  = pms.n2p5;
+            data.p50  = pms.n5p0;
+            data.p100 = pms.n10p0;
+        } else {
+            data.p03 = data.p05 = data.p10 = 0;
+            data.p25 = data.p50 = data.p100 = 0;
+        }
+
         data.isValidRead = true;
         return true;
     }
 
     AirQuality classifyData() const {
 
-        // ===== CASE NO READING =====
         if (!data.isValidRead) return AirQuality::ERROR;
 
-        // ===== Safe mass concentration checks =====
-        bool pmSafe = data.pm1 <= PM1_MAX_SAFE &&
-                    data.pm25 <= PM25_MAX_SAFE &&
-                    data.pm10 <= PM10_MAX_SAFE;
+        bool pmSafe = data.pm1  <= PM1_MAX_SAFE &&
+                      data.pm25 <= PM25_MAX_SAFE &&
+                      data.pm10 <= PM10_MAX_SAFE;
 
         float smallCount = static_cast<float>(data.p03) +
-                            static_cast<float>(data.p05) +
-                            static_cast<float>(data.p10);
+                           static_cast<float>(data.p05) +
+                           static_cast<float>(data.p10);
 
         float largeCount = static_cast<float>(data.p25) +
-                            static_cast<float>(data.p50) +
-                            static_cast<float>(data.p100);
+                           static_cast<float>(data.p50) +
+                           static_cast<float>(data.p100);
 
-        bool isCountSafe = smallCount <= SMALLCOUNT_MAX_SAFE && largeCount <=LARGECOUNT_MAX_SAFE;
+        bool isCountSafe = smallCount <= SMALLCOUNT_MAX_SAFE &&
+                           largeCount <= LARGECOUNT_MAX_SAFE;
 
-        // ===== Danger mass concentration check =====
-        bool pmDanger = data.pm10 > PM10_MAX_SAFE * AQI_WARNING_FACTOR ||
+        bool pmDanger = data.pm10 > PM10_MAX_SAFE  * AQI_WARNING_FACTOR ||
                         data.pm25 > PM25_MAX_SAFE * AQI_WARNING_FACTOR;
         
         bool countDanger = smallCount > SMALLCOUNT_MAX_SAFE * AQI_WARNING_FACTOR ||
-                            largeCount > LARGECOUNT_MAX_SAFE * AQI_WARNING_FACTOR;
+                           largeCount > LARGECOUNT_MAX_SAFE * AQI_WARNING_FACTOR;
 
-        // ===== CASES ======
-        if (isCountSafe) return AirQuality::SAFE;
-        else if (pmDanger || countDanger) return AirQuality::WARNING;
-        else return AirQuality::WARNING;
+        if (pmSafe && isCountSafe)          return AirQuality::SAFE;
+        else if (pmDanger || countDanger)   return AirQuality::DANGER;
+        else                                return AirQuality::WARNING;
     }
 
     String qualityLabel() const {
         switch (classifyData()) {
-            case AirQuality::SAFE:
-                return "SAFE";
-
-            case AirQuality::WARNING:
-                return "WARNING";
-            
-            case AirQuality::DANGER:
-                return "DANGER";
-            
-            default:
-                return "Error";
+            case AirQuality::SAFE:    return "SAFE";
+            case AirQuality::WARNING: return "WARNING";
+            case AirQuality::DANGER:  return "DANGER";
+            default:                  return "ERROR";
         }
     }
 
     String toString() const {
-        String s = "PM1: " + String(data.pm1); 
-        s += ", PM2.5:"     + String(data.pm25);
-        s += ", PM10: "     + String(data.pm10);
-        s += "| AQI: "     + qualityLabel();
-
+        String s = "PM1: "   + String(data.pm1); 
+        s += ", PM2.5:"      + String(data.pm25);
+        s += ", PM10:"       + String(data.pm10);
+        s += " | AQI: "      + qualityLabel();
         return s;
     }
 
     const PMSData& getData() const { return data; }
-
+    const bool& getStatus() const { return data.isValidRead; }
 };
-#endif
+
+#endif // INCLUDE_AIRQUALITYANALYZER_H
