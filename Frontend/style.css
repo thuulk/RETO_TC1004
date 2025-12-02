@@ -330,3 +330,20 @@ h2 {
 a {
     text-decoration: none !important;
 }
+/* ======================= TABLA RESPONSIVA SOLO PARA CELULARES ======================= */
+@media (max-width: 768px) {
+    .tabla-container {
+        overflow-x: auto;         /* scroll horizontal */
+        -webkit-overflow-scrolling: touch;
+    }
+
+    table {
+        min-width: 600px;         /* hace que la tabla no se achique feo */
+        font-size: 1.3rem;        /* un poco más grande para móvil */
+    }
+
+    th, td {
+        padding: 8px;
+        white-space: nowrap;      /* evita que se rompan las filas */
+    }
+}
