@@ -56,21 +56,20 @@ if (!isset($_SESSION["username"])) {
   </div>
 
   <script>
-  // ====== FUNCIÓN PARA CREAR UN GAUGE ======
   function createGauge(id, value, max) {
     const ctx = document.getElementById(id).getContext('2d');
 
     let color;
     const percent = (value / max) * 100;
-    if (percent < 60) color = '#219EBC';      // azul
+    if (percent < 60) color = '#219EBC'; // azul
     else if (percent < 80) color = '#FFB703'; // amarillo
-    else color = '#FB8500';                   // rojo
+    else color = '#FB8500'; // rojo
 
     return new Chart(ctx, {
       type: 'doughnut',
       data: {
         datasets: [{
-          data: [value, Math.max(max - value, 0)],
+          data: [value, max - value],
           backgroundColor: [color, '#e0e0e0'],
           borderWidth: 0
         }]
@@ -104,84 +103,17 @@ if (!isset($_SESSION["username"])) {
     });
   }
 
-  // ====== FUNCIÓN PARA ACTUALIZAR UN GAUGE EXISTENTE ======
-  function updateGauge(chart, value, max) {
-    if (!chart) return;
-    const dataset = chart.data.datasets[0];
+  // Datos simulados (luego vendrán de la base de datos)
+  const temperatura = 27.5;
+  const humedad = 65;
+  const presion = 500;
+  const calidadAire = 120;
 
-    // actualizar datos
-    dataset.data[0] = value;
-    dataset.data[1] = Math.max(max - value, 0);
-
-    // recalcular color según porcentaje
-    const percent = (value / max) * 100;
-    let color;
-    if (percent < 60) color = '#219EBC';
-    else if (percent < 80) color = '#FFB703';
-    else color = '#FB8500';
-
-    dataset.backgroundColor[0] = color;
-
-    chart.update();
-  }
-
-  // ====== VALORES MÁXIMOS DE CADA GAUGE ======
-  const MAX_TEMP = 50;    // ajusta si tu rango es otro
-  const MAX_HUM  = 100;
-  const MAX_PRES = 1100;
-  const MAX_AIR  = 500;   // placeholder por ahora
-
-  // ====== CREAR GAUGES INICIALES (VALORES EN 0) ======
-  let tempGauge  = createGauge('tempGauge', 0, MAX_TEMP);
-  let humGauge   = createGauge('humGauge', 0, MAX_HUM);
-  let presGauge  = createGauge('presGauge', 0, MAX_PRES);
-  let airGauge   = createGauge('airGauge', 0, MAX_AIR); // lo dejamos quieto por ahora
-
-  // ====== WEBSOCKET HACIA NODE-RED ======
-  // Asegúrate que tu nodo WebSocket en Node-RED está en:
-  //   ws://<tu-host>:1880/dashboard
-  // y que envía un JSON como:
-  //   { "temperatura": 23.5, "humedad": 45.2, "presion": 1013.2 }
-  const socketUrl = 'ws://' + window.location.hostname + ':1880/dashboard';
-  const socket = new WebSocket(socketUrl);
-
-  socket.onopen = function () {
-    console.log('WebSocket conectado a', socketUrl);
-  };
-
-  socket.onmessage = function (event) {
-    try {
-      const data = JSON.parse(event.data);
-
-      // BME280 -> temperatura, humedad, presion
-      if (typeof data.temperatura === 'number') {
-        updateGauge(tempGauge, data.temperatura, MAX_TEMP);
-      }
-      if (typeof data.humedad === 'number') {
-        updateGauge(humGauge, data.humedad, MAX_HUM);
-      }
-      if (typeof data.presion === 'number') {
-        updateGauge(presGauge, data.presion, MAX_PRES);
-      }
-
-      // Si más adelante quieres usar PMS para calidad del aire,
-      // aquí podrías hacer algo como:
-      // if (typeof data.calidadAire === 'number') {
-      //   updateGauge(airGauge, data.calidadAire, MAX_AIR);
-      // }
-
-    } catch (e) {
-      console.error('Error al parsear mensaje WebSocket:', e, event.data);
-    }
-  };
-
-  socket.onclose = function () {
-    console.log('WebSocket cerrado');
-  };
-
-  socket.onerror = function (error) {
-    console.error('Error en WebSocket:', error);
-  };
-</script>
+  // Crear los gauges
+  createGauge('tempGauge', temperatura, 50);
+  createGauge('humGauge', humedad, 100);
+  createGauge('presGauge', presion, 1100);
+  createGauge('airGauge', calidadAire, 500);
+  </script>
 </body>
 </html>
