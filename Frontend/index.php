@@ -90,6 +90,7 @@ if (!isset($_SESSION["username"])) {
       transition: 0.2s;
       background: var(--azul);
       color: white;
+      transition: background-color 0.3s ease;
     }
 
     .modal-buttons button:hover {
@@ -122,9 +123,10 @@ if (!isset($_SESSION["username"])) {
 
 <nav>
   <div class="nav-links">
-    <p class="activo">Inicio</p>
-    <p>Historial</p>
+    <a href="index.php"><p class="activo">Inicio</p></a>
+    <a href="historial.php"><p>Historial</p></a>
   </div>
+
 
   <div class="nav-right">
       <button class="nav-btn" onclick="abrirRegistro()">

@@ -87,7 +87,7 @@ header {
 }
 
 .login-container button:hover {
-    background-color: var(--amarillo);
+    transform: scale(1.03);
     color: var(--azulOscuro);
 }
 
@@ -132,9 +132,15 @@ nav {
     padding: 0.6rem 1.2rem;
     border-radius: 8px;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: 0.25s;
     font-weight: 600;
+    text-decoration: none;
 }
+
+a {
+        text-decoration: none !important;
+}
+
 
 .nav-links p.activo {
     background-color: var(--azul);
@@ -148,6 +154,7 @@ nav {
 
 .nav-links p:hover {
     background-color: rgba(2, 48, 71, 0.1);
+    transform: scale(1.03);
 }
 
 /* =======================================
@@ -161,12 +168,12 @@ nav {
     border-radius: 8px;
     font-weight: bold;
     cursor: pointer;
-    transition: background-color 0.3s ease;
+    transition: 0.25s;
 }
 
 .logout-btn:hover {
-    background-color: var(--amarillo);
-    color: var(--azulOscuro);
+        transform: scale(1.03);
+        color: var(--azulOscuro);
 }
 
 /* =======================================
@@ -215,11 +222,11 @@ button {
     font-size: 1rem;
     font-weight: bold;
     cursor: pointer;
-    transition: background-color 0.3s ease;
+    transition: 0.25s;
 }
 
 button:hover {
-    background-color: var(--amarillo);
+    transform: scale(1.03);
     color: var(--azulOscuro);
 }
 
@@ -300,11 +307,12 @@ button:hover {
     border: none;
     cursor: pointer;
     transition: 0.25s;
+
 }
 
 .nav-btn:hover {
-    background-color: rgba(2, 48, 71, 0.1);
     transform: scale(1.05);
+    background-color: rgba(2, 48, 71, 0.1);
 }
 
 .nav-right {
@@ -318,4 +326,7 @@ h2 {
 
 .subtitulo{
     font-size: 1.5rem;
+}
+a {
+    text-decoration: none !important;
 }
