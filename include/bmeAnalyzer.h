@@ -10,8 +10,6 @@
 // ===== Presion de hermosillo =====
 #define SEALEVELPRESSURE_HPA (1010.80) 
 
-using namespace std;
-
 
 struct BMEData {
     float temp;
@@ -53,7 +51,6 @@ class BMEReader {
         data.temp = bme.readTemperature();
         data.humid = bme.readHumidity();
         data.press = bme.readPressure() / 100.f;
-        data.altitude = bme.readAltitude(SEALEVELPRESSURE_HPA);
         
         // ===== Valid lecture =====
         data.isValidRead = true;

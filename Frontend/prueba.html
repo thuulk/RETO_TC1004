@@ -33,7 +33,7 @@ font-weight: bold;
 </div>
 <script>
 // Crear la conexión WebSocket
-var socket = new WebSocket('ws://localhost:1880/temperatura'); // Usa la URL de tu servidor WebSocket
+var socket = new WebSocket('ws://localhost:1880/dashboard'); // Usa la URL de tu servidor WebSocket
 // Escuchar mensajes del WebSocket
 socket.onmessage = function(event) {
 var data = JSON.parse(event.data);

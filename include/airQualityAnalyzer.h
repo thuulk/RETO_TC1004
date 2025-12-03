@@ -1,9 +1,9 @@
 #ifndef INCLUDE_AIRQUALITYANALYZER_H
 #define INCLUDE_AIRQUALITYANALYZER_H
 
-#include <Arduino.h>      // Para Serial, String
+#include <Arduino.h>      // Para Serial, String, boolean
 #include <stdint.h>
-#include <PMserial.h>
+#include "PMS5003.h"      // define struct pms5003data y readPMSdata(Stream *s)
 
 // =====================
 //   PINES PMS5003
@@ -33,50 +33,40 @@ constexpr float AQI_WARNING_FACTOR  = 3.0f; // 3x above "good" threshold
 struct PMSData {
 
     // ==== READING STATUS ====
-    bool isValidRead = false;
+    bool     isValidRead = false;
 
     // ==== PM en µg/m³ ====
-    uint16_t pm1  = 0;  // PM <= 1.0 µm
+    uint16_t pm1         = 0;  // PM <= 1.0 µm (mapeado desde pm10_env del PMS5003)
 };
 
-enum class AirQuality {
-    ERROR,
-    SAFE,
-    WARNING,
-    DANGER,
-};
+// El .h de PMS5003 define un *global*:
+//   struct pms5003data data;
+// Lo declaramos como externo para poder leerlo aquí sin redefinirlo.
+extern struct pms5003data data;
 
 class PMSReader {
 private:
-    SerialPM& pms;
-    PMSData   data;
+    // Usamos una referencia genérica a Stream para que funcione con SoftwareSerial,
+    // HardwareSerial, etc. (SoftwareSerial hereda de Stream).
+    Stream&  pms;
+    PMSData  dataLocal;
 
 public:
-    PMSReader(SerialPM& pms5003) : pms(pms5003) {}
+    // Constructor: recibe el puerto serie que ya creaste (ej. SoftwareSerial pmsSerial)
+    PMSReader(Stream& pms5003) : pms(pms5003) {}
 
+    // Llama a esto periódicamente para actualizar la lectura del sensor.
     [[nodiscard]] bool updateData() noexcept {
 
-        // Lee del sensor
-        pms.read();
-
-        // Debug bruto de la librería
-        if (pms) {
-            Serial.println(F("[PMS] VALID FRAME RECEIVED"));
-            Serial.print(F("  PM1: "));  Serial.println(pms.pm01);
-            Serial.print(F("  PM2.5: "));Serial.println(pms.pm25);
-            Serial.print(F("  PM10: ")); Serial.println(pms.pm10);
-        } else {
-            Serial.print(F("[PMS] INVALID FRAME, status = "));
-            Serial.println(pms.status);  // 1 = timeout, 2 = checksum, 3 = header...
-        }
-
-        // Si no hay datos de masa, no hay nada que hacer
-        if (!pms.has_particulate_matter()) {
-            data.isValidRead = false;
+        // readPMSdata viene de PMS5003.h y llena el struct global ::data
+        // Devuelve true (boolean) si se leyó un frame válido.
+        if (!readPMSdata(&pms)) {
+            dataLocal.isValidRead = false;
             return false;
         }
 
         // ==== MASS CONCENTRATION (µg/m³) ====
+<<<<<<< Updated upstream
         data.pm1  = pms.pm01;
         data.pm25 = pms.pm25; 
         data.pm10 = pms.pm10;
@@ -93,60 +83,34 @@ public:
             data.p03 = data.p05 = data.p10 = 0;
             data.p25 = data.p50 = data.p100 = 0;
         }
+=======
+        //
+        // OJO con el naming del PMS5003:
+        //  pm10_*  -> PM1.0
+        //  pm25_*  -> PM2.5
+        //  pm100_* -> PM10
+        //
+        // Aquí solo exponemos PM1.0 como ejemplo.
+        dataLocal.pm1 = ::data.pm10_env;  // PM1.0 ambiental
+>>>>>>> Stashed changes
 
-        data.isValidRead = true;
+        dataLocal.isValidRead = true;
         return true;
     }
 
-    AirQuality classifyData() const {
-
-        if (!data.isValidRead) return AirQuality::ERROR;
-
-        bool pmSafe = data.pm1  <= PM1_MAX_SAFE &&
-                      data.pm25 <= PM25_MAX_SAFE &&
-                      data.pm10 <= PM10_MAX_SAFE;
-
-        float smallCount = static_cast<float>(data.p03) +
-                           static_cast<float>(data.p05) +
-                           static_cast<float>(data.p10);
-
-        float largeCount = static_cast<float>(data.p25) +
-                           static_cast<float>(data.p50) +
-                           static_cast<float>(data.p100);
-
-        bool isCountSafe = smallCount <= SMALLCOUNT_MAX_SAFE &&
-                           largeCount <= LARGECOUNT_MAX_SAFE;
-
-        bool pmDanger = data.pm10 > PM10_MAX_SAFE  * AQI_WARNING_FACTOR ||
-                        data.pm25 > PM25_MAX_SAFE * AQI_WARNING_FACTOR;
-        
-        bool countDanger = smallCount > SMALLCOUNT_MAX_SAFE * AQI_WARNING_FACTOR ||
-                           largeCount > LARGECOUNT_MAX_SAFE * AQI_WARNING_FACTOR;
-
-        if (pmSafe && isCountSafe)          return AirQuality::SAFE;
-        else if (pmDanger || countDanger)   return AirQuality::DANGER;
-        else                                return AirQuality::WARNING;
-    }
-
-    String qualityLabel() const {
-        switch (classifyData()) {
-            case AirQuality::SAFE:    return "SAFE";
-            case AirQuality::WARNING: return "WARNING";
-            case AirQuality::DANGER:  return "DANGER";
-            default:                  return "ERROR";
-        }
-    }
-
+    // Representación simple en texto (para Serial.print/debug)
     String toString() const {
-        String s = "PM1: "   + String(data.pm1); 
-        s += ", PM2.5:"      + String(data.pm25);
-        s += ", PM10:"       + String(data.pm10);
-        s += " | AQI: "      + qualityLabel();
+        if (!dataLocal.isValidRead) {
+            return String("PMS: lectura NO válida");
+        }
+
+        String s = "PM1: " + String(dataLocal.pm1) + " ug/m3";
         return s;
     }
 
-    const PMSData& getData() const { return data; }
-    const bool& getStatus() const { return data.isValidRead; }
+    // Getters "seguros"
+    const PMSData& getData() const      { return dataLocal; }
+    const bool&    getStatus() const    { return dataLocal.isValidRead; }
 };
 
 #endif // INCLUDE_AIRQUALITYANALYZER_H

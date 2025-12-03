@@ -1,53 +1,16 @@
 <?php
 session_start();
 
-// ===========================================
-// Capturar warnings y errores
-// ===========================================
-$warnings = [];
-set_error_handler(function($errno, $errstr, $errfile, $errline) use (&$warnings) {
-    $warnings[] = "Warning: $errstr in $errfile on line $errline";
-    return true; // evita que PHP lo muestre normalmente
-});
-
-// ===========================================
-// Intento de conexión (puede fallar)
-// ===========================================
-include "conexion.php";
-
-// ===========================================
-// Validación de sesión
-// ===========================================
+// Si quieres mantener validación de sesión:
 if (!isset($_SESSION["username"])) {
     header("Location: login.html");
     exit();
 }
 
-// ===========================================
-// Consulta
-// ===========================================
-$registros = [];
-if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["fecha"])) {
-
-    $fecha = $_POST["fecha"];
-    $hora_inicio = $_POST["hora_inicio"];
-    $hora_fin = $_POST["hora_fin"];
-
-    $sql = "SELECT * FROM datosgenerales
-            WHERE fecha = ?
-            AND hora BETWEEN ? AND ?
-            ORDER BY hora ASC";
-
-    $stmt = mysqli_prepare($conn, $sql);
-    mysqli_stmt_bind_param($stmt, "sss", $fecha, $hora_inicio, $hora_fin);
-    mysqli_stmt_execute($stmt);
-    $result = mysqli_stmt_get_result($stmt);
-
-    while ($row = mysqli_fetch_assoc($result)) {
-        $registros[] = $row;
-    }
-}
+// Si no vas a usar warnings, define el arreglo vacío para evitar notices
+$warnings = [];
 ?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -107,28 +70,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["fecha"])) {
     <button class="btn-consultar" onclick="abrirConsulta()">Consultar registros</button>
 
     <div class="tabla-container">
-        <table>
+        <table id="tabla-historial">
+          <thead>
             <tr>
-                <th>Fecha</th><th>Hora</th><th>Humedad</th><th>Temperatura</th><th>Calidad Aire</th><th>Presión</th>
+                <th>Fecha</th>
+                <th>Hora</th>
+                <th>Humedad</th>
+                <th>Temperatura</th>
+                <th>Calidad Aire</th>
+                <th>Presión</th>
+                <th>CO₂</th>
+                <th>TVOC</th>
             </tr>
+          </thead>
+          <tbody id="tabla-historial-body">
+            <!-- El cuerpo lo llenará JS, así que puedes borrar TODO el bloque PHP de aquí adentro -->
+          </tbody>
+      </table>
 
-            <?php if ($_SERVER["REQUEST_METHOD"] === "POST"): ?>
-                <?php if (empty($registros)): ?>
-                    <tr><td colspan="6">No hay resultados en ese rango.</td></tr>
-                <?php else: ?>
-                    <?php foreach ($registros as $row): ?>
-                        <tr>
-                            <td><?= $row["fecha"] ?></td>
-                            <td><?= $row["hora"] ?></td>
-                            <td><?= $row["humedad"] ?></td>
-                            <td><?= $row["temperatura"] ?></td>
-                            <td><?= $row["calidad_Aire"] ?></td>
-                            <td><?= $row["presion"] ?></td>
-                        </tr>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            <?php endif; ?>
-        </table>
     </div>
 </div>
 
@@ -136,7 +95,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["fecha"])) {
 <div id="consultaBox" class="alert-box">
   <div class="alert-content">
     <h3>Consultar registros</h3>
-    <form method="POST" action="historial.php">
+    <form onsubmit="event.preventDefault(); enviarConsultaHistorial(this);">
         <label>Fecha:</label>
         <input type="date" name="fecha" required>
         <label>Hora inicial:</label>
@@ -149,11 +108,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["fecha"])) {
         <label>Hora final:</label>
         <select name="hora_fin" required>
             <option value="">Selecciona</option>
-            <?php for ($h=0;$h<24;$h++): $ho = str_pad($h,2,"0",STR_PAD_LEFT).":00:00"; ?>
+            <?php for ($h=0;$h<24;$h++): $ho = str_pad($h,2,"0",STR_PAD_LEFT).":59:59"; ?>
             <option value="<?= $ho ?>"><?= $ho ?></option>
             <?php endfor; ?>
         </select>
-
         <div class="modal-buttons">
           <button type="submit">Consultar</button>
           <button type="button" class="cancel" onclick="cerrarConsulta()">Cancelar</button>
@@ -161,6 +119,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["fecha"])) {
     </form>
   </div>
 </div>
+
 
 <div id="registroBox" class="alert-box">
   <div class="alert-content">
@@ -183,7 +142,88 @@ function abrirConsulta() { document.getElementById("consultaBox").style.display 
 function cerrarConsulta() { document.getElementById("consultaBox").style.display = "none"; }
 function abrirRegistro() { document.getElementById("registroBox").style.display = "flex"; }
 function cerrarRegistro() { document.getElementById("registroBox").style.display = "none"; }
+
+// ======================= WEBSOCKET HISTORIAL =======================
+
+// Conexión al WebSocket de Node-RED para historial
+var wsHist = new WebSocket('ws://' + window.location.hostname + ':1880/historial');
+
+wsHist.onopen = function () {
+  console.log('WS historial conectado');
+};
+
+wsHist.onerror = function (e) {
+  console.error('WS historial ERROR:', e);
+};
+
+wsHist.onclose = function (e) {
+  console.warn('WS historial cerrado. readyState =', wsHist.readyState, e);
+};
+
+// Función que se llama cuando envías el formulario del modal
+function enviarConsultaHistorial(form) {
+  var fecha      = form.fecha.value;
+  var horaInicio = form.hora_inicio.value;
+  var horaFin    = form.hora_fin.value;
+
+  console.log('enviarConsultaHistorial()', { fecha, horaInicio, horaFin });
+
+  if (!fecha || !horaInicio || !horaFin) {
+    alert("Completa fecha y rango de horas");
+    return;
+  }
+
+  if (wsHist.readyState !== WebSocket.OPEN) { // 1
+    console.error('WS historial NO está conectado. readyState =', wsHist.readyState);
+    alert('El WebSocket de historial no está conectado. Revisa Node-RED y el puerto 1880.');
+    return;
+  }
+
+  var msg = {
+    fecha: fecha,
+    hora_inicio: horaInicio,
+    hora_fin: horaFin
+  };
+
+  console.log("Enviando consulta historial:", msg);
+  wsHist.send(JSON.stringify(msg));
+}
+
+// Cuando Node-RED responde con las filas del historial
+wsHist.onmessage = function (event) {
+  console.log("Historial recibido:", event.data);
+
+  var rows = JSON.parse(event.data); // array de objetos
+  var tbody = document.getElementById('tabla-historial-body');
+  tbody.innerHTML = '';
+
+  if (!Array.isArray(rows) || rows.length === 0) {
+    var tr = document.createElement('tr');
+    tr.innerHTML = '<td colspan="8">No hay resultados en ese rango.</td>';
+    tbody.appendChild(tr);
+    return;
+  }
+
+  rows.forEach(function (r) {
+    var tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + r.fecha         + '</td>' +
+      '<td>' + r.hora          + '</td>' +
+      '<td>' + r.humedad       + '</td>' +
+      '<td>' + r.temperatura   + '</td>' +
+      '<td>' + r.calidad_Aire  + '</td>' +
+      '<td>' + r.presion       + '</td>' +
+      '<td>' + r.co2           + '</td>' +
+      '<td>' + r.tvoc          + '</td>';
+    tbody.appendChild(tr);
+  });
+
+  // Cierra el modal cuando ya se llenó la tabla
+  cerrarConsulta();
+};
 </script>
+
+
 
 <!-- ======================= WARNINGS ABAJO ======================= -->
 <?php if (!empty($warnings)): ?>

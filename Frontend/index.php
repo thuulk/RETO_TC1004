@@ -127,7 +127,6 @@ if (!isset($_SESSION["username"])) {
     <a href="historial.php"><p>Historial</p></a>
   </div>
 
-
   <div class="nav-right">
       <button class="nav-btn" onclick="abrirRegistro()">
           Registrar empleado
@@ -138,7 +137,6 @@ if (!isset($_SESSION["username"])) {
       </a>
   </div>
 </nav>
-
 
 <div class="container">
   <section class="dashboard">
@@ -239,18 +237,35 @@ if (!isset($_SESSION["username"])) {
 let gauges = {};
 let setpointActual = null;
 
+// Rango de setpoints (configurable desde modal)
 let setpoints = {
+<<<<<<< Updated upstream
   temp: {min:null, max:null},
   hum:  {min:null, max:null},
   pres: {min:null, max:null},
   air:  {min:null, max:null}
+=======
+  temp: {min: null, max: null},
+  hum:  {min: null, max: null},
+  pres: {min: null, max: null},
+  air:  {min: null, max: null},
+  co2:  {min: null, max: null},
+  tvoc: {min: null, max: null}
+>>>>>>> Stashed changes
 };
 
+// Valores actuales de los sensores (se actualizan con WebSocket)
 let valores = {
   temperatura: 20,
   humedad: 40,
   presion: 900,
+<<<<<<< Updated upstream
   calidad: 30
+=======
+  calidad: 30,
+  co2: 450,  // ppm
+  tvoc: 100  // ppb
+>>>>>>> Stashed changes
 };
 
 const codigoAlarma = "1234";
@@ -259,6 +274,8 @@ let alarmaActiva = false;
 // ========= GAUGES ===========
 function createOrUpdateGauge(id, value, max) {
   const canvas = document.getElementById(id);
+  if (!canvas) return;
+
   const ctx = canvas.getContext('2d');
 
   const percent = (value / max) * 100;
@@ -320,7 +337,13 @@ function setSetpoint(type) {
     temp: "Temperatura (°C)",
     hum: "Humedad (%)",
     pres: "Presión (hPa)",
+<<<<<<< Updated upstream
     air: "Calidad del aire (ppm)"
+=======
+    air: "Calidad del aire (ppm)",
+    co2: "Dióxido de Carbono (ppm)",
+    tvoc: "Compuestos Orgánicos Volátiles (ppb)"
+>>>>>>> Stashed changes
   };
 
   document.getElementById("setpointLabel").innerText = names[type];
@@ -377,6 +400,8 @@ function validarCodigo() {
 function verificarAlarma(tipo, valor) {
   const sp = setpoints[tipo];
 
+  if (!sp) return;
+
   if (sp.min !== null && valor < sp.min) {
     activarAlerta(tipo, valor);
     return;
@@ -388,6 +413,7 @@ function verificarAlarma(tipo, valor) {
   }
 }
 
+<<<<<<< Updated upstream
 // ========= SIMULACIÓN ===========
 function simularDatos() {
   valores.temperatura += Math.random() * 2;
@@ -395,18 +421,35 @@ function simularDatos() {
   valores.presion += Math.random() * 3;
   valores.calidad += Math.random() * 4;
 
+=======
+// ========= ACTUALIZAR GAUGES DESDE VALORES ===========
+function actualizarGaugesDesdeValores() {
+  // Gauges BME
+>>>>>>> Stashed changes
   createOrUpdateGauge('tempGauge', valores.temperatura, 50);
-  createOrUpdateGauge('humGauge', valores.humedad, 100);
-  createOrUpdateGauge('presGauge', valores.presion, 1100);
-  createOrUpdateGauge('airGauge', valores.calidad, 500);
+  createOrUpdateGauge('humGauge',  valores.humedad,     100);
+  createOrUpdateGauge('presGauge', valores.presion,     1100);
+  createOrUpdateGauge('airGauge',  valores.calidad,     500);
 
+<<<<<<< Updated upstream
+=======
+  // Gauges CO2 / TVOC (si empiezas a mandarlos en el JSON)
+  createOrUpdateGauge('co2Gauge',  valores.co2,  2000);
+  createOrUpdateGauge('tvocGauge', valores.tvoc, 600);
+
+  // Alarmas
+>>>>>>> Stashed changes
   verificarAlarma('temp', valores.temperatura);
-  verificarAlarma('hum', valores.humedad);
+  verificarAlarma('hum',  valores.humedad);
   verificarAlarma('pres', valores.presion);
+<<<<<<< Updated upstream
   verificarAlarma('air', valores.calidad);
+=======
+  verificarAlarma('air',  valores.calidad);
+  verificarAlarma('co2',  valores.co2);
+  verificarAlarma('tvoc', valores.tvoc);
+>>>>>>> Stashed changes
 }
-
-setInterval(simularDatos, 2000);
 
 // ======== REGISTRO EMPLEADO ==========
 function abrirRegistro() {
@@ -417,6 +460,69 @@ function cerrarRegistro() {
     document.getElementById("registroBox").style.display = "none";
 }
 
+// ======== WEBSOCKET (DATOS REALES) ==========
+/*
+  Tu ESP manda un JSON así (según wifi.h):
+
+  {
+    "temperatura": <float>,
+    "humedad":     <float>,
+    "presion":     <float>,
+    "pm1":         <int>,
+    // "co2":      <int>,   // cuando lo actives
+    // "tvoc":     <int>
+  }
+*/
+
+// Ajusta la URL si usas Node-RED:
+// var socket = new WebSocket('ws://' + window.location.hostname + ':1880/dashboard');
+var socket = new WebSocket('ws://' + window.location.hostname + ':1880/dashboard');
+
+socket.onmessage = function(event) {
+  try {
+    var data = JSON.parse(event.data);
+
+    // Mapeo JSON -> objeto valores
+    if (typeof data.temperatura === 'number') {
+      valores.temperatura = data.temperatura;
+    }
+    if (typeof data.humedad === 'number') {
+      valores.humedad = data.humedad;
+    }
+    if (typeof data.presion === 'number') {
+      valores.presion = data.presion;
+    }
+    if (typeof data.pm1 === 'number') {
+      valores.calidad = data.pm1; // calidad del aire basada en pm1
+    }
+
+    // Cuando empieces a mandarlos:
+    if (typeof data.co2 === 'number') {
+      valores.co2 = data.co2;
+    }
+    if (typeof data.tvoc === 'number') {
+      valores.tvoc = data.tvoc;
+    }
+
+    // Actualiza gauges y alarmas con los datos reales
+    actualizarGaugesDesdeValores();
+
+  } catch (e) {
+    console.error("Error parseando mensaje WebSocket:", e, event.data);
+  }
+};
+
+socket.onopen = function() {
+  console.log("Conexión WebSocket abierta");
+};
+
+socket.onclose = function() {
+  console.log("Conexión WebSocket cerrada");
+};
+
+socket.onerror = function(error) {
+  console.log("Error en WebSocket:", error);
+};
 </script>
 
 </body>

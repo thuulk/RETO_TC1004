@@ -2,7 +2,8 @@
 #define INCLUDE_CSS811READER_H
 #define CCS_SCL D3
 #define CCS_SDA D4
-#include <Adafruit_CSS811.h>
+#include <Arduino.h>
+#include <Adafruit_CCS811.h>
 #include "bmeAnalyzer.h"
 
 
@@ -15,12 +16,12 @@ struct CCSData {
 class CCSReader {
 
     private:
-    Adafruit_CCS811& css811;
+    Adafruit_CCS811& ccs811;
     CCSData data;
 
     public:
 
-    explicit CCSReader(Adafruit_CCS811& sensor) : css811(sensor) {}
+    explicit CCSReader(Adafruit_CCS811& sensor) : ccs811(sensor) {}
     [[nodiscard]] bool updateData(const BMEReader& bme) {
         
         if (!bme.getStatus()) {
@@ -34,19 +35,19 @@ class CCSReader {
         const float& hum  = bmeData.humid;
         ccs811.setEnvironmentalData(hum, temp);
 
-        if (!css811.available()) {
+        if (!ccs811.available()) {
             Serial.println("css no disponible");
             data.isValidRead = false;
             return false;
         }
 
-        if (css811.readData()) {
+        if (ccs811.readData()) {
             Serial.println("lecutras CCS fallidas");
             data.isValidRead = false;
-            return false
+            return false;
         }
 
-        data.co2 = ccs811.getCO2();
+        data.co2 = ccs811.geteCO2();
         data.tvoc = ccs811.getTVOC();
         data.isValidRead = true;
         return true;
@@ -61,6 +62,6 @@ class CCSReader {
         return s;
     }
  
-}
+};
 
 #endif

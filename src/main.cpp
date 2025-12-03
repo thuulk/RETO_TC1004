@@ -1,7 +1,8 @@
 #include <Wire.h>
 #include <ESP8266WiFi.h>
 #include <ArduinoJson.h>
-#include "wifiPublish.h"
+#include <SoftwareSerial.h>
+#include "wifi.h"
 #include "airQualityAnalyzer.h"
 #include "bmeAnalyzer.h"
 #include "airQualityAnalyzer.h"
@@ -26,12 +27,12 @@ BMEReader bme(bme280);
 // ===== Initiliazing PMS5003 (PMserial) =====
 // Constructor recomendado por la librería:
 // SerialPM pms(PMSx003, RX, TX);
-SerialPM serialpm(PMSx003, PMS_RX, PMS_TX);
-PMSReader pms(serialpm);
+SoftwareSerial pmsSerial(PMS_RX, PMS_TX);
+PMSReader pms(pmsSerial);
 
 // ===== css setup =====
-Adafruit_CCS811 css811;
-CSSReader css(css811);
+//Adafruit_CCS811 css811;
+//CSSReader css(css811);
 
 // -------- CONECTAR WIFI --------
 
@@ -49,7 +50,7 @@ void setup() {
   Serial.begin(115200); // inicializando baud rate
 
   // ===== pms ======
-  serialpm.init();   // configure interanl serial port to 9600
+  pmsSerial.begin(9600);   // configure interanl serial port to 9600
 
   // ===== bme ======
   if (!bme280.begin(0x76)) { // caso: direccion de memoria del bme no encontrada
@@ -60,17 +61,17 @@ void setup() {
   Serial.println("Sensores inicializados correctamente.");
 
   // ===== ccs =====
-  if (!ccs.begin()) {
-    Serial.println("No se pudo iniciar el sensor CCS811. Verifica cableado!");
-    while (1);
-  }
+  //if (!ccs.begin()) {
+    //Serial.println("No se pudo iniciar el sensor CCS811. Verifica cableado!");
+    //while (1);
+  //}
 
   // Configurar modo de medición (1 lectura/seg)
-  ccs.setDriveMode(CCS811_DRIVE_MODE_1SEC);
+  //ccs.setDriveMode(CCS811_DRIVE_MODE_1SEC);
 
   // Esperar a que se estabilice (warm-up)
   Serial.println("Esperando a que el sensor esté listo...");
-  while (!ccs.available()) delay(100);
+  //while (!ccs.available()) delay(100);
   Serial.println("CCS811 listo!");
   
   
@@ -85,7 +86,7 @@ void loop() {
   if (!client.connected()) reconnect();
   client.loop();
 
-  sendSensorData(pms, bme, ccs);
+  sendSensorData(pms, bme);
   delay(3000);
   
   
@@ -96,7 +97,7 @@ void loop() {
   // serial monitor 
   Serial.println(bme.toString());
   Serial.println(pms.toString());
-  Serial.println(ccs.toString());
+  //Serial.println(ccs.toString());
 
 
 }
