@@ -1,3 +1,4 @@
+
 :root {
     --celeste: #8ECAE6;
     --azul: #219EBC;
@@ -231,4 +232,367 @@ button:hover {
     max-width: 120rem;
     margin: 0 auto;
     width: 100%;
+}
+=======
+/* =======================================
+   VARIABLES (COLORES PRINCIPALES)
+======================================= */
+:root {
+    --celeste: #8ECAE6;
+    --azul: #219EBC;
+    --azulOscuro: #023047;
+    --amarillo: #FFB703;
+    --naranja: #FB8500;
+    --blanco: #ffffff;
+}
+
+/* =======================================
+   BASE GENERAL
+======================================= */
+html {
+    font-size: 62.5%;
+    box-sizing: border-box;
+}
+
+*, *:before, *:after {
+    box-sizing: inherit;
+}
+
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    margin: 0;
+
+}
+
+header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding: 1rem 2rem;
+    display: flex;
+    text-align: left;
+    z-index: 10;
+}
+
+/* =======================================
+   LOGIN PAGE
+======================================= */
+.login-page {
+    background: linear-gradient(135deg, var(--azulOscuro), var(--azul));
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.login-container {
+    background-color: var(--blanco);
+    padding: 3rem;
+    border-radius: 1.5rem;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+    width: 300px;
+    text-align: center;
+}
+
+.login-container input {
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0;
+    border: 2px solid var(--celeste);
+    border-radius: 8px;
+    font-size: 1rem;
+}
+
+.login-container input:focus {
+    outline: none;
+    border-color: var(--azul);
+}
+
+.login-container button {
+    width: 100%;
+    padding: 10px;
+    background-color: var(--naranja);
+    color: var(--blanco);
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.login-container button:hover {
+    transform: scale(1.03);
+    color: var(--azulOscuro);
+}
+
+/* =======================================
+   DASHBOARD PAGE
+======================================= */
+.dashboard-page {
+    background: linear-gradient(135deg, var(--azulOscuro), var(--azul));
+    color: var(--blanco);
+    padding: 2rem;
+    height: 100vh;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    display: flex;
+    flex-direction: column;
+}
+
+/* =======================================
+   NAVBAR
+======================================= */
+nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: var(--blanco);
+    color: var(--azulOscuro);
+    padding: 1rem 2rem;
+    border-top-left-radius: 1.5rem;
+    border-top-right-radius: 1.5rem;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+    margin: 4rem 2rem 0 2rem;
+}
+
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+}
+
+.nav-links p {
+    margin: 0;
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.25s;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+a {
+        text-decoration: none !important;
+}
+
+
+.nav-links p.activo {
+    background-color: var(--azul);
+    color: var(--blanco);
+}
+
+.nav-links p:not(.activo) {
+    background-color: transparent;
+    color: var(--azulOscuro);
+}
+
+.nav-links p:hover {
+    background-color: rgba(2, 48, 71, 0.1);
+    transform: scale(1.03);
+}
+
+/* =======================================
+   BOTÓN CERRAR SESIÓN
+======================================= */
+.logout-btn {
+    background-color: var(--naranja);
+    color: var(--blanco);
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.25s;
+}
+
+.logout-btn:hover {
+        transform: scale(1.03);
+        color: var(--azulOscuro);
+}
+
+/* =======================================
+   CONTENEDOR PRINCIPAL
+======================================= */
+.container {
+    background-color: var(--blanco);
+    color: var(--azulOscuro);
+    padding: 3rem;
+    margin: 0 2rem 2rem 2rem;
+    border-bottom-left-radius: 1.5rem;
+    border-bottom-right-radius: 1.5rem;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+    overflow-y: auto;
+}
+
+/* =======================================
+   TITULOS, INPUTS, BOTONES GENERALES
+======================================= */
+h2 {
+    color: var(--azulOscuro);
+    margin-bottom: 2rem;
+}
+
+input {
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0;
+    border: 2px solid var(--celeste);
+    border-radius: 8px;
+    font-size: 1rem;
+}
+
+input:focus {
+    outline: none;
+    border-color: var(--azul);
+}
+
+button {
+    width: 100%;
+    padding: 10px;
+    background-color: var(--naranja);
+    color: var(--blanco);
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.25s;
+}
+
+button:hover {
+    transform: scale(1.03);
+    color: var(--azulOscuro);
+}
+
+/* =======================================
+   TARJETAS GAUGES
+======================================= */
+.gauges-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    row-gap: 4rem;
+    column-gap: 2rem;
+    justify-items: center;
+    align-items: center;
+    margin-top: 10rem;
+    padding: 1rem;
+}
+
+.gauge-card {
+    background: var(--blanco);
+    color: var(--azulOscuro);
+    border-radius: 12px;
+    padding: 1rem;
+    width: auto;
+    height: auto;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    max-width: 25rem;
+    max-height: 25rem;
+}
+
+.gauge-card canvas {
+    max-width: 180px !important;
+    max-height: 180px !important;
+    width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+}
+
+
+.gauge-card p {
+    font-weight: bold;
+    font-size: 1.1rem;
+    margin-top: 0.5rem;
+}
+
+/* =======================================
+   LOGO
+======================================= */
+.logo {
+    max-width: 10rem;
+    margin-right: 1rem;
+}
+
+/* =======================================
+   WRAPPER GAUGES
+======================================= */
+.gauges-wrapper {
+    max-width: 120rem;
+    margin: 0 auto;
+    width: 100%;
+}
+.gauges-container {
+    max-width: 70rem;
+    margin: 0 auto;
+}
+
+.nav-btn {
+    width: auto !important;
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    font-weight: 600;
+    background-color: transparent;
+    color: var(--azulOscuro);
+    border: none;
+    cursor: pointer;
+    transition: 0.25s;
+
+}
+
+.nav-btn:hover {
+    transform: scale(1.05);
+    background-color: rgba(2, 48, 71, 0.1);
+}
+
+.nav-right {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;  /* separación bonita */
+}
+h2 {
+    font-size: 2.4rem;
+}
+
+.subtitulo{
+    font-size: 1.5rem;
+    margin-bottom: 5rem;
+}
+a {
+    text-decoration: none !important;
+}
+/* ======================= TABLA RESPONSIVA SOLO PARA CELULARES ======================= */
+@media (max-width: 768px) {
+    .tabla-container {
+        overflow-x: auto;         /* scroll horizontal */
+        -webkit-overflow-scrolling: touch;
+    }
+
+    table {
+        min-width: 600px;         /* hace que la tabla no se achique feo */
+        font-size: 1.3rem;        /* un poco más grande para móvil */
+    }
+
+    th, td {
+        padding: 8px;
+        white-space: nowrap;      /* evita que se rompan las filas */
+    }
+}
+/* Dentro de la etiqueta <style> */
+.gauge-card {
+    /* Propiedades existentes, ej.: */
+    /* width: 220px; */
+    /* padding: 15px; */
+
+    /* ===== NUEVO: ESCALADO ===== */
+    transform: scale(1.1); /* Hace la tarjeta 20% más grande */
+    transform-origin: center center; /* Asegura que escale desde el centro */
+    transition: transform 0.3s ease; /* Transición suave opcional */
 }

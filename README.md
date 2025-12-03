@@ -10,5 +10,5 @@ cd <repo>/firmware
 # Initialize PlatformIO for your IDE (VSCode recommended)
 pio init --ide vscode
 
-# Rebuild the C/C++ index (optional but recommended)
+# Rebuild the C/C++ index 
 pio run

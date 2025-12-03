@@ -1,9 +1,10 @@
 {
 	"folders": [
-	
 		{ "path": "firmware"},
-		{ "path": "server"}
+		{ "path": "Frontend"},
+    { "path": "Database"}
 	],
+  
 	"settings": {
 		 // PlatformIO: usa su Python portable
     "platformio-ide.useBuiltinPython": true,
