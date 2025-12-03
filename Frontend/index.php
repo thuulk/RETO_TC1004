@@ -133,7 +133,7 @@ if (!isset($_SESSION["username"])) {
           Registrar empleado
       </button>
 
-      <a href="logout.php">
+      <a href="cerrar_sesion.php">
         <button class="logout-btn">Cerrar sesión</button>
       </a>
   </div>
