@@ -246,7 +246,6 @@ let setpointActual = null;
 
 // URL de Webhook de n8n
 const N8N_WEBHOOK_URL = 'https://bioairsolutions.app.n8n.cloud/webhook-test/N8nSergioAlertasAutomaticas';
-
 let setpoints = {
   temp: {min:null, max:null},
   hum:  {min:null, max:null},
