@@ -105,7 +105,7 @@ if (!isset($_SESSION["username"])) {
       background: #6e6e6e;
     }
 
-    /* Alarma */
+    /* La clase .alarm se deja por si la necesitas más tarde, pero ya no se usa en JS */
     .alarm {
       background-color: #ffb4b4 !important;
       box-shadow: 0 0 20px rgba(255, 0, 0, 0.6);
@@ -244,12 +244,14 @@ if (!isset($_SESSION["username"])) {
 let gauges = {};
 let setpointActual = null;
 
+// URL de Webhook de n8n
+const N8N_WEBHOOK_URL = 'http://localhost:5678/webhook/N8nSergioAlertasAutomaticas';
+
 let setpoints = {
   temp: {min:null, max:null},
   hum:  {min:null, max:null},
   pres: {min:null, max:null},
   air:  {min:null, max:null},
-  // === NUEVOS SETPOINTS ===
   co2:  {min:null, max:null},
   tvoc: {min:null, max:null}
 };
@@ -259,13 +261,13 @@ let valores = {
   humedad: 40,
   presion: 900,
   calidad: 30,
-  // === NUEVOS VALORES INICIALES ===
-  co2: 450, // Partes por millón
-  tvoc: 100 // Partes por billón
+  co2: 450,
+  tvoc: 100
 };
 
 const codigoAlarma = "1234";
 let alarmaActiva = false;
+let sensorEnAlarma = null; // Mantiene el registro del sensor que causó la alarma.
 
 // ========= GAUGES ===========
 function createOrUpdateGauge(id, value, max) {
@@ -332,7 +334,6 @@ function setSetpoint(type) {
     hum: "Humedad (%)",
     pres: "Presión (hPa)",
     air: "Calidad del aire (ppm)",
-    // === NUEVOS NOMBRES ===
     co2: "Dióxido de Carbono (ppm)",
     tvoc: "Compuestos Orgánicos Volátiles (ppb)"
   };
@@ -364,16 +365,20 @@ function cerrarSetpoint() {
   document.getElementById("setpointBox").style.display = "none";
 }
 
-// ========= ALERTA ===========
+// ========= ALERTA (Visual removida) ===========
 function activarAlerta(tipo, valor) {
   if (alarmaActiva) return;
 
   alarmaActiva = true;
+  sensorEnAlarma = tipo; // Guarda el sensor que causó la alarma
 
   document.getElementById("alertMessage").innerText =
     `El sensor de ${tipo.toUpperCase()} salió del rango (${valor.toFixed(1)}).`;
 
   document.getElementById("alertBox").style.display = "flex";
+
+  // Llama a la función para enviar datos a n8n
+  enviarAlertaAWebhook(tipo, valor);
 }
 
 function validarCodigo() {
@@ -382,59 +387,89 @@ function validarCodigo() {
   if (code === codigoAlarma) {
     alarmaActiva = false;
     document.getElementById("alertBox").style.display = "none";
+    document.getElementById("alertCode").value = "";
+
+    // Limpia el registro del sensor de alarma
+    sensorEnAlarma = null;
+
   } else {
     alert("Código incorrecto.");
   }
 }
 
-// ========= VERIFICAR ALARMA ===========
+// ========= FUNCIÓN PARA ENVIAR DATOS A N8N ===========
+function enviarAlertaAWebhook(sensor, valor) {
+    const data = {
+        sensor: sensor.toUpperCase(),
+        valor_actual: valor.toFixed(2),
+        nivel: "CRITICO",
+        fecha: new Date().toISOString(),
+        mensaje_operador: `ALARMA: El sensor de ${sensor.toUpperCase()} está fuera de rango. Valor actual: ${valor.toFixed(2)}.`
+    };
+
+    fetch(N8N_WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+    })
+    .then(response => {
+        if (response.ok) {
+            console.log(`Webhook enviado correctamente para ${sensor}.`);
+        } else {
+            console.error(`Error al enviar Webhook para ${sensor}. Estado: ${response.status}`);
+        }
+    })
+    .catch((error) => {
+        console.error('Error de red al intentar enviar el Webhook. Asegúrate de que n8n esté corriendo localmente en el puerto 5678.', error);
+    });
+}
+
+
+// ========= VERIFICAR ALARMA (Simplificada) ===========
 function verificarAlarma(tipo, valor) {
   const sp = setpoints[tipo];
 
-  if (sp.min !== null && valor < sp.min) {
+  // Si está fuera de rango MIN y el modal NO está activo, actívalo
+  if (sp.min !== null && valor < sp.min && !alarmaActiva) {
     activarAlerta(tipo, valor);
     return;
   }
 
-  if (sp.max !== null && valor > sp.max) {
+  // Si está fuera de rango MAX y el modal NO está activo, actívalo
+  if (sp.max !== null && valor > sp.max && !alarmaActiva) {
     activarAlerta(tipo, valor);
     return;
   }
 }
 
-// ========= SIMULACIÓN - INCLUYE CO2 y TVOC ===========
+// ========= SIMULACIÓN ===========
 function simularDatos() {
-  // Simulación de valores existentes (con rangos más centrados)
+  // Simulación de valores
   valores.temperatura += Math.random() * 2 - 1;
   valores.humedad += Math.random() * 2 - 1;
   valores.presion += Math.random() * 3 - 1.5;
   valores.calidad += Math.random() * 4 - 2;
-
-  // === SIMULACIÓN DE CO2 y TVOC ===
   valores.co2 += Math.random() * 10 - 5;
   valores.tvoc += Math.random() * 5 - 2.5;
 
-  // Asegurar mínimos (por ejemplo, CO2 no baja de 350)
   valores.co2 = Math.max(350, valores.co2);
   valores.tvoc = Math.max(0, valores.tvoc);
 
-  // Actualización de Gauges existentes
+  // Actualización de Gauges
   createOrUpdateGauge('tempGauge', valores.temperatura, 50);
   createOrUpdateGauge('humGauge', valores.humedad, 100);
   createOrUpdateGauge('presGauge', valores.presion, 1100);
   createOrUpdateGauge('airGauge', valores.calidad, 500);
+  createOrUpdateGauge('co2Gauge', valores.co2, 2000);
+  createOrUpdateGauge('tvocGauge', valores.tvoc, 600);
 
-  // === ACTUALIZACIÓN DE GAUGES NUEVOS ===
-  createOrUpdateGauge('co2Gauge', valores.co2, 2000); // Máximo de 2000 ppm
-  createOrUpdateGauge('tvocGauge', valores.tvoc, 600); // Máximo de 600 ppb
-
-  // Verificación de Alarma existentes
+  // Verificación de Alarma
   verificarAlarma('temp', valores.temperatura);
   verificarAlarma('hum', valores.humedad);
   verificarAlarma('pres', valores.presion);
   verificarAlarma('air', valores.calidad);
-
-  // === VERIFICACIÓN DE ALARMA NUEVAS ===
   verificarAlarma('co2', valores.co2);
   verificarAlarma('tvoc', valores.tvoc);
 }
