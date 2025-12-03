@@ -245,7 +245,7 @@ let gauges = {};
 let setpointActual = null;
 
 // URL de Webhook de n8n
-const N8N_WEBHOOK_URL = 'http://localhost:5678/webhook/N8nSergioAlertasAutomaticas';
+const N8N_WEBHOOK_URL = 'http://localhost:5678/webhook-test/N8nSergioAlertasAutomaticas';
 
 let setpoints = {
   temp: {min:null, max:null},
